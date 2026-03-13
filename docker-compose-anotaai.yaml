@@ -1,0 +1,18 @@
+services:
+  backend:
+    image: ghcr.io/tatohonma/backend-anota-ai-pdvseven:1.1.14
+    container_name: backend-anota-ai-pdvseven
+    env_file:
+      - .env
+    environment:
+      PDV7_DB_SERVER: "host.docker.internal\\PDV7"
+    ports:
+      - "5101:5101"
+
+  cron:
+    image: ghcr.io/tatohonma/pdv7-integracao-cron-job:1.1.1
+    container_name: pdv7-integracao-cron-job
+    environment:
+      BACKEND_INTEGRACAO_ANOTAAI_PDV7_URL: http://backend:5101/api/importar
+    depends_on:
+      - backend

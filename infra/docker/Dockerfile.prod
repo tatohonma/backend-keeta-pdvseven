@@ -1,0 +1,33 @@
+# Estágio 1: Builder
+FROM node:18 AS builder
+
+WORKDIR /app
+
+WORKDIR /app
+COPY package*.json ./
+
+# Instalar apenas as dependências de produção
+RUN npm ci --only=production
+
+# Copiar o diretório 'src' e os arquivos necessários da raiz do projeto
+COPY src ./src
+
+# Estágio 2: Produção
+FROM node:18-alpine
+
+# Argumento e variável de ambiente para versão
+ARG SERVICE_VERSION
+ENV SERVICE_VERSION=${SERVICE_VERSION}
+
+RUN echo "A versão da aplicação é: $SERVICE_VERSION"
+
+WORKDIR /app
+
+# Copiar os arquivos do estágio de build
+COPY --from=builder /app .
+
+# Expor a porta em que a aplicação será executada
+EXPOSE 5000
+
+# Comando para iniciar a aplicação
+CMD ["npm", "start"]
