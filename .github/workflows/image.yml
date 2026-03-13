@@ -3,13 +3,13 @@ name: Generate image
 on:
   push:
     branches:
-      - main # Branch de destino para gerenciar releases
+      - main 
 
 jobs:
   build_and_publish:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write # Permissão para o workflow criar tags
+      contents: write
 
     steps:
       - uses: actions/checkout@v3
