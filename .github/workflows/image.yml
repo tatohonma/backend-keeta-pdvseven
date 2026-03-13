@@ -21,7 +21,7 @@ jobs:
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
       - name: Instalar dependências
-        run: npm install
+        run: npm ci
 
       - name: Criar release com release-it
         run: npm run release
