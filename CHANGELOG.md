@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 (2026-03-13)
+
+### Features
+
+* update workflow ([36aa6eb](https://github.com/tatohonma/backend-keeta-pdvseven/commit/36aa6eb426997891aa15f363a56c517347efafd3))
+
 ## 1.2.0 (2026-03-13)
 
 ### Features
