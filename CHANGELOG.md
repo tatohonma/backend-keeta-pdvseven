@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 (2026-03-13)
+
+### Features
+
+* update image.yml ([8d115c0](https://github.com/tatohonma/backend-keeta-pdvseven/commit/8d115c07237cdbe5a32e6efbf3f046d7a7122162))
+
 ## 1.3.0 (2026-03-13)
 
 ### Features
