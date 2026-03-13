@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 (2026-03-13)
+
+### Features
+
+* remove comments ([3a0a287](https://github.com/tatohonma/backend-keeta-pdvseven/commit/3a0a287d599ece75555d80bc232e27977e2cafec))
+
 ## 1.1.0 (2026-03-13)
 
 ### Features
