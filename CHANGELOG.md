@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 (2026-03-13)
+
+### Features
+
+* update don't create github release ([0b7e71d](https://github.com/tatohonma/backend-keeta-pdvseven/commit/0b7e71da69c23380bde9549d96ce349d63c71586))
+
 ## 1.4.0 (2026-03-13)
 
 ### Features
