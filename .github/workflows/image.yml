@@ -3,7 +3,7 @@ name: Generate image
 on:
   push:
     branches:
-      - main 
+      - main # Branch de destino para gerenciar releases
 
 jobs:
   build_and_publish:
