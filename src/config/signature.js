@@ -1,4 +1,4 @@
-import crypto from "crypto";
+const crypto = require("crypto");
 
 export function generateSignature({ url, params = {}, body = null, secret }) {
   const baseUrl = url.split("?")[0];
