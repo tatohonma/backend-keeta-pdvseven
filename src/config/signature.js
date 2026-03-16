@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 
-export function generateSignature({ url, params = {}, body = null, secret }) {
+function generateSignature({ url, params = {}, body = null, secret }) {
   const baseUrl = url.split("?")[0];
 
   const queryString = Object.keys(params)
@@ -21,3 +21,7 @@ export function generateSignature({ url, params = {}, body = null, secret }) {
 
   return { signature, stringToSign };
 }
+
+module.exports = {
+  generateSignature,
+};
