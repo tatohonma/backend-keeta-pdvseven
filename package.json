@@ -1,6 +1,6 @@
 {
   "name": "backend-keeta-pdvseven",
-  "version": "1.0.1",
+  "version": "1.5.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -31,7 +31,7 @@
       "commitMessage": "chore: release v${version}"
     },
     "github": {
-      "release": true
+      "release": false
     },
     "npm": {
       "publish": false
