@@ -517,7 +517,10 @@ const sincronisarStatus = async ({ pedido }) => {
         return;
       }
 
-      if (statusPedidoPDV7 === "enviado") {
+      if (
+        statusPedidoPDV7 === "enviado" &&
+        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MERCHANT"
+      ) {
         console.log("Enviando pedido no keeta");
         await keetaApi.post(`/orders/${keetaTagId.Valor}/dispatch`);
 
@@ -530,7 +533,26 @@ const sincronisarStatus = async ({ pedido }) => {
         return;
       }
 
-      if (statusPedidoPDV7 === "finalizado") {
+      if (
+        statusPedidoPDV7 === "enviado" &&
+        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MARKETPLACE"
+      ) {
+        console.log("PEDIDO MARKTPLACE - READY FOR PICKUP");
+        await keetaApi.post(`/orders/${keetaTagId.Valor}/readyForPickup`);
+
+        await atualizarValorTag({
+          GUID: pedido.GUIDIdentificacao,
+          chave: "keeta-status",
+          valor: "READY_FOR_PICKUP",
+        });
+
+        return;
+      }
+
+      if (
+        statusPedidoPDV7 === "finalizado" &&
+        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MERCHANT"
+      ) {
         console.log("Finalizando pedido keeta");
         await keetaApi.post(`/orders/${keetaApi.Valor}/delivered`);
         await atualizarValorTag({
