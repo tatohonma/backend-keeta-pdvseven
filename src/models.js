@@ -181,7 +181,7 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDCliente", sql.Int, idCliente)
     .input("IDTipoPedido", sql.Int, 30)
     .input("IDStatusPedido", sql.Int, 60)
-    .input("IDTipoDesconto", sql.Int, idTipoDesconto)
+    .input("IDTipoDesconto", sql.Int, valorDesconto > 0 ? idTipoDesconto : null)
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
@@ -246,7 +246,6 @@ const carregarProduto = async (item) => {
   if (item.externalId) {
     produto.idProduto = item.externalId;
   } else {
-    //TODO: id produto na verdade é igual a 1
     produto.idProduto = 1;
     produto.observacao = `não cadastrado: ${item.name}`;
   }
@@ -505,7 +504,7 @@ const sincronisarStatus = async ({ pedido }) => {
       //   }
 
       if (statusPedidoPDV7 === "aberto") {
-        console.log("Confirmando pedido no keeta");
+        console.log("Confirmando pedido no keeta", pedido.IDPedido);
         await keetaApi.post(`/orders/${keetaTagId.Valor}/confirm`);
 
         await atualizarValorTag({
@@ -519,7 +518,7 @@ const sincronisarStatus = async ({ pedido }) => {
 
       if (
         statusPedidoPDV7 === "enviado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MERCHANT"
+        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
       ) {
         console.log("Enviando pedido no keeta");
         await keetaApi.post(`/orders/${keetaTagId.Valor}/dispatch`);
@@ -535,7 +534,7 @@ const sincronisarStatus = async ({ pedido }) => {
 
       if (
         statusPedidoPDV7 === "enviado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MARKETPLACE"
+        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MARKETPLACE"
       ) {
         console.log("PEDIDO MARKTPLACE - READY FOR PICKUP");
         await keetaApi.post(`/orders/${keetaTagId.Valor}/readyForPickup`);
@@ -551,7 +550,7 @@ const sincronisarStatus = async ({ pedido }) => {
 
       if (
         statusPedidoPDV7 === "finalizado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveryBy === "MERCHANT"
+        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
       ) {
         console.log("Finalizando pedido keeta");
         await keetaApi.post(`/orders/${keetaApi.Valor}/delivered`);
@@ -565,16 +564,24 @@ const sincronisarStatus = async ({ pedido }) => {
       }
 
       if (statusPedidoPDV7 === "cancelado") {
-        console.log("Cancelando pedido keeta");
+        console.log("Cancelando pedido keeta", pedido.IDPedido);
         const motivo = await obterMotivoCancelamento({
           IDPedido: pedido.IDPedido,
         });
 
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/requestCancellation`, {
-          reason: motivo || "Motivo não informado",
-          code: "SYSTEMIC_ISSUES",
-          mode: "AUTO",
-        });
+        const response = await keetaApi.post(
+          `/orders/${keetaTagId.Valor}/requestCancellation`,
+          {
+            reason: motivo.Nome || "Motivo não informado",
+            code: "SYSTEMIC_ISSUES",
+            mode: "AUTO",
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
 
         await atualizarValorTag({
           GUID: pedido.GUIDIdentificacao,

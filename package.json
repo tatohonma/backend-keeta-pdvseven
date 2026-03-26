@@ -1,6 +1,6 @@
 {
   "name": "backend-keeta-pdvseven",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -35,25 +35,6 @@
     },
     "npm": {
       "publish": false
-    },
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "infile": "CHANGELOG.md",
-        "preset": {
-          "name": "conventionalcommits",
-          "types": [
-            {
-              "type": "feat",
-              "section": "Features"
-            },
-            {
-              "type": "fix",
-              "section": "Bug Fixes"
-            },
-            {}
-          ]
-        }
-      }
     }
   }
 }
