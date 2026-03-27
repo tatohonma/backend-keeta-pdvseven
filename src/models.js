@@ -336,7 +336,7 @@ const adicionarPedidoPagamento = async (idPedido, tipoPagamento, pagamento) => {
     `);
 
   return {
-    name: tipoPagamento.Nome,
+    name: tipoPagamento?.Nome,
     value: parseFloat(pagamento.value),
   };
 };
@@ -572,7 +572,7 @@ const sincronisarStatus = async ({ pedido }) => {
         const response = await keetaApi.post(
           `/orders/${keetaTagId.Valor}/requestCancellation`,
           {
-            reason: motivo.Nome || "Motivo não informado",
+            reason: motivo?.Nome ?? "Motivo não informado",
             code: "SYSTEMIC_ISSUES",
             mode: "AUTO",
           },
