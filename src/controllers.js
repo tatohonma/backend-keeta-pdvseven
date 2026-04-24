@@ -41,28 +41,30 @@ const processarPedidosImportacao = async () => {
           formattedAddress: pedido.delivery.deliveryAddress.formattedAddress,
         };
 
-        const res = await keetaApi.post("/batchDecrypt", {
-          cipherInfos: Object.values(encryptedFields)
-            .filter(
-              (value) => typeof value === "string" && value.startsWith("ENC_"),
-            )
-            .map((value) => ({
-              cipherText: value,
-            })),
-        });
+        const encrypetedInfos = Object.values(encryptedFields)
+          .filter((value) => {
+            return typeof value === "string" && value.startsWith("ENC_");
+          })
+          .map((value) => ({ cipherText: value }));
 
-        const decrypted = {};
-        Object.entries(encryptedFields).forEach(([key, value], i) => {
-          const v = res.data.plainInfos.find((e) => e?.cipherText === value);
-          decrypted[key] = v?.plainText ?? value;
-        });
+        if (encrypetedInfos.length > 0) {
+          const res = await keetaApi.post("/batchDecrypt", {
+            cipherInfos: encrypetedInfos,
+          });
 
-        pedido.customer.phone.number = decrypted.customerNumber;
-        pedido.delivery.deliveryAddress.district = decrypted.deliveryDistrict;
-        pedido.delivery.deliveryAddress.number = decrypted.deliveryNumber;
-        pedido.delivery.deliveryAddress.complement = decrypted.complement;
-        pedido.delivery.deliveryAddress.formattedAddress =
-          decrypted.formattedAddress;
+          const decrypted = {};
+          Object.entries(encryptedFields).forEach(([key, value], i) => {
+            const v = res.data.plainInfos.find((e) => e?.cipherText === value);
+            decrypted[key] = v?.plainText ?? value;
+          });
+
+          pedido.customer.phone.number = decrypted.customerNumber;
+          pedido.delivery.deliveryAddress.district = decrypted.deliveryDistrict;
+          pedido.delivery.deliveryAddress.number = decrypted.deliveryNumber;
+          pedido.delivery.deliveryAddress.complement = decrypted.complement;
+          pedido.delivery.deliveryAddress.formattedAddress =
+            decrypted.formattedAddress;
+        }
 
         inserirPedidoNoPDVSeven(pedido);
       }
