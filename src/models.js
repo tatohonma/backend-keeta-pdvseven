@@ -60,14 +60,11 @@ const adicionarCliente = async ({ pedido }) => {
     valor: pedido.customer.id,
   });
 
-  const ddd = !isNaN(pedido.customer.phone.extension)
-    ? pedido.customer.phone.extension
-    : 0;
-  const telefone =
-    !isNaN(pedido.customer.phone.number) &&
-    String(pedido.customer.phone.number).length <= 9
-      ? pedido.customer.phone.number
-      : 0;
+  const ext = pedido.customer.phone.extension;
+  const ddd = ext && !isNaN(ext) ? Number(ext) : 0;
+
+  const num = pedido.customer.phone.number;
+  const telefone = !isNaN(num) && String(num).length <= 9 ? num : 0;
 
   let bairro,
     cep,
@@ -227,17 +224,24 @@ const adicionarPedido = async (pedido, idCliente) => {
 
 const adicionarProdutos = async (pedido, idPedido) => {
   for (const item of pedido.items) {
-    const produto = await carregarProduto(item);
-    const idPedidoProduto = await adicionarPedidoProduto(
-      idPedido,
-      produto,
-      null,
-      item,
-    );
+    for (let i = 0; i < item.quantity; i++) {
+      const produto = await carregarProduto(item);
+      const idPedidoProduto = await adicionarPedidoProduto(
+        idPedido,
+        produto,
+        null,
+        item,
+      );
 
-    for (const options of item.options) {
-      const produto = await carregarProduto(options);
-      await adicionarPedidoProduto(idPedido, produto, idPedidoProduto, options);
+      for (const options of item.options) {
+        const produto = await carregarProduto(options);
+        await adicionarPedidoProduto(
+          idPedido,
+          produto,
+          idPedidoProduto,
+          options,
+        );
+      }
     }
   }
 };
@@ -286,8 +290,8 @@ const adicionarPedidoProduto = async (
     .input("IDPedidoProduto_pai", sql.Int, idPedidoProdutoPai)
     .input("IDPDV", sql.Int, idPDV)
     .input("IDUsuario", sql.Int, idUsuario)
-    .input("Quantidade", sql.Decimal(18, 3), item.quantity)
-    .input("ValorUnitario", sql.Decimal(18, 2), item.totalPrice.value)
+    .input("Quantidade", sql.Decimal(18, 3), 1)
+    .input("ValorUnitario", sql.Decimal(18, 2), item.unitPrice.value)
     .input("Notas", sql.NVarChar(sql.MAX), notas)
     .input("Cancelado", sql.Bit, 0)
     .input("RetornarAoEstoque", sql.Bit, 0).query(`
@@ -522,8 +526,16 @@ const sincronisarStatus = async ({ pedido }) => {
         statusPedidoPDV7 === "enviado" &&
         detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
       ) {
-        console.log("Enviando pedido no keeta");
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/dispatch`);
+        console.log("Enviando pedido no keeta - MERCHANT");
+        await keetaApi.post(`/orders/${keetaTagId.Valor}/dispatch`, {
+          deliveryTrackingInfo: {
+            event: {
+              type: "DELIVERY_ONGOING",
+              message: "PEDIDO ENVIADO",
+              datetime: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+            },
+          },
+        });
 
         await atualizarValorTag({
           GUID: pedido.GUIDIdentificacao,
