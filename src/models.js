@@ -166,11 +166,13 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
-  const valorDesconto = pedido.total.discount.value;
+  const valorDesconto =
+    pedido.total.discount.value + pedido.total.otherFees.value;
 
   const observacoes = "";
   const aplicarDesconto = valorDesconto > 0 ? 1 : 0;
-  const observacaoCupom = "";
+
+  const observacaoCupom = pedido.otherFees.map((e) => e.name).join("\n");
   const taxaServicoPadrao = 0;
 
   const guid = uuidv4();
@@ -251,9 +253,10 @@ const carregarProduto = async (item) => {
 
   if (item.externalId) {
     produto.idProduto = item.externalId;
+    produto.observacao = item.specialInstructions;
   } else {
     produto.idProduto = 1;
-    produto.observacao = `não cadastrado: ${item.name}`;
+    produto.observacao = `Não cadastrado: ${item.name}\n\n Instruçoes especiais:\n${item?.specialInstructions}`;
   }
 
   return produto;
@@ -273,7 +276,6 @@ const adicionarPedidoProduto = async (
     WHERE IDTipoPDV = 280 AND Chave = 'IDPDV'`);
 
   if (pdvResult.recordset.length > 0) {
-    console.log("Resultado da consulta IDPDV:", pdvResult.recordset[0]);
     idPDV = pdvResult.recordset[0].Valor;
   } else {
     throw new Error("Nenhum IDPDV encontrado na tabela tbConfiguracaoBD.");
