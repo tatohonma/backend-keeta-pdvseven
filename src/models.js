@@ -187,7 +187,7 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
     .input("ValorDesconto", sql.Decimal(18, 2), valorDesconto)
-    .input("ValorTotal", sql.Decimal(18, 2), pedido.total.itemsPrice.value)
+    .input("ValorTotal", sql.Decimal(18, 2), pedido.total.orderAmount.value)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
     .input("ValorEntrega", sql.Decimal(18, 2), pedido.total.otherFees.value)
     .input("AplicarDesconto", sql.Bit, aplicarDesconto)
