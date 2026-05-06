@@ -19,6 +19,7 @@ const {
   buscarClientePorGUID,
 } = require("./services/cliente");
 const { buscarIdEstado } = require("./services/estado");
+const { toCurrency } = require("./utils/currency");
 
 let config = {};
 
@@ -166,13 +167,34 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
+  const valorFrete = pedido.otherFees.reduce((acc, cur) => {
+    if (cur.receivedBy === "LOGISTIC_SERVICES") {
+      return acc + cur.price.value;
+    }
+
+    return acc;
+  }, 0);
+
   const valorDesconto =
-    pedido.total.discount.value + pedido.total.otherFees.value;
+    pedido.total.discount.value + pedido.total.otherFees.value - valorFrete;
+
+  console.log(
+    "--> VALOR DO FRETE:",
+    valorFrete,
+    "VALOR DESCONTO",
+    valorDesconto,
+    "pedido ->",
+    pedido.total.discount.value,
+    "otherfees",
+    pedido.total.otherFees.value,
+  );
 
   const observacoes = "";
   const aplicarDesconto = valorDesconto > 0 ? 1 : 0;
 
-  const observacaoCupom = pedido.otherFees.map((e) => e.name).join("\n");
+  const observacaoCupom = pedido.otherFees
+    .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
+    .join("\n");
   const taxaServicoPadrao = 0;
 
   const guid = uuidv4();
