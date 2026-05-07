@@ -167,36 +167,27 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
-  const valorFrete = pedido.otherFees.reduce((acc, cur) => {
-    if (cur.receivedBy === "LOGISTIC_SERVICES") {
-      return acc + cur.price.value;
-    }
+  const valorDaEntrega =
+    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-    return acc;
-  }, 0);
+  const valorTotal = pedido.total.itemsPrice.value + valorDaEntrega;
 
-  const valorDesconto =
-    pedido.total.discount.value + pedido.total.otherFees.value - valorFrete;
-
-  console.log(
-    "--> VALOR DO FRETE:",
-    valorFrete,
-    "VALOR DESCONTO",
-    valorDesconto,
-    "pedido ->",
-    pedido.total.discount.value,
-    "otherfees",
-    pedido.total.otherFees.value,
+  const descontos = pedido.otherFees.filter(
+    (f) => !["DELIVERY_FEE", "TIP"].includes(f.name),
   );
 
-  const observacoes = "";
-  const aplicarDesconto = valorDesconto > 0 ? 1 : 0;
+  const valorTotalDosDescontos = descontos.reduce((acc, curr) => {
+    return acc + curr.price.value;
+  }, 0);
 
-  const observacaoCupom = pedido.otherFees
+  const observacoes = "";
+  const aplicarDesconto = valorTotalDosDescontos > 0 ? 1 : 0;
+
+  const observacaoCupom = descontos
     .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
     .join("\n");
-  const taxaServicoPadrao = 0;
 
+  const taxaServicoPadrao = 0;
   const guid = uuidv4();
 
   const result = await pool
@@ -204,14 +195,18 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDCliente", sql.Int, idCliente)
     .input("IDTipoPedido", sql.Int, 30)
     .input("IDStatusPedido", sql.Int, 60)
-    .input("IDTipoDesconto", sql.Int, valorDesconto > 0 ? idTipoDesconto : null)
+    .input(
+      "IDTipoDesconto",
+      sql.Int,
+      valorTotalDosDescontos > 0 ? idTipoDesconto : null,
+    )
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
-    .input("ValorDesconto", sql.Decimal(18, 2), valorDesconto)
-    .input("ValorTotal", sql.Decimal(18, 2), pedido.total.orderAmount.value)
+    .input("ValorDesconto", sql.Decimal(18, 2), valorTotalDosDescontos)
+    .input("ValorTotal", sql.Decimal(18, 2), valorTotal)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
-    .input("ValorEntrega", sql.Decimal(18, 2), pedido.total.otherFees.value)
+    .input("ValorEntrega", sql.Decimal(18, 2), valorDaEntrega)
     .input("AplicarDesconto", sql.Bit, aplicarDesconto)
     .input("ObservacaoCupom", sql.NVarChar(sql.MAX), observacaoCupom)
     .input("IDOrigemPedido", sql.Int, idOrigemPedido)
