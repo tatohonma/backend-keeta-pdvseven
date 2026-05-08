@@ -159,6 +159,13 @@ const adicionarCliente = async ({ pedido }) => {
   return clienteExistente.IDCliente;
 };
 
+const calcularValorTotalDoPedido = (pedido) => {
+  const valorDaEntrega =
+    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
+
+  return pedido.total.itemsPrice.value + valorDaEntrega;
+};
+
 const adicionarPedido = async (pedido, idCliente) => {
   const pool = await getPool();
 
@@ -167,25 +174,25 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
-  const valorDaEntrega =
-    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
-
-  const valorTotal = pedido.total.itemsPrice.value + valorDaEntrega;
-
   const descontos = pedido.otherFees.filter(
     (f) => !["DELIVERY_FEE", "TIP"].includes(f.name),
   );
 
-  const valorTotalDosDescontos = descontos.reduce((acc, curr) => {
-    return acc + curr.price.value;
-  }, 0);
+  const valorTotal = calcularValorTotalDoPedido(pedido);
+
+  const valorDaEntrega =
+    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
+
+  // const valorTotalDosDescontos = descontos.reduce((acc, curr) => {
+  //   return acc + curr.price.value;
+  // }, 0);
 
   const observacoes = "";
-  const aplicarDesconto = valorTotalDosDescontos > 0 ? 1 : 0;
+  // const aplicarDesconto = valorTotalDosDescontos > 0 ? 1 : 0;
 
-  const observacaoCupom = descontos
-    .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
-    .join("\n");
+  const observacaoCupom =
+    `*** Pedido Keeta ${pedido.displayId} ***\n` +
+    descontos.map((e) => `${e.name} ${toCurrency(e.price.value)}`).join("\n");
 
   const taxaServicoPadrao = 0;
   const guid = uuidv4();
@@ -195,19 +202,15 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDCliente", sql.Int, idCliente)
     .input("IDTipoPedido", sql.Int, 30)
     .input("IDStatusPedido", sql.Int, 60)
-    .input(
-      "IDTipoDesconto",
-      sql.Int,
-      valorTotalDosDescontos > 0 ? idTipoDesconto : null,
-    )
+    .input("IDTipoDesconto", sql.Int, null)
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
-    .input("ValorDesconto", sql.Decimal(18, 2), valorTotalDosDescontos)
+    .input("ValorDesconto", sql.Decimal(18, 2), 0)
     .input("ValorTotal", sql.Decimal(18, 2), valorTotal)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
     .input("ValorEntrega", sql.Decimal(18, 2), valorDaEntrega)
-    .input("AplicarDesconto", sql.Bit, aplicarDesconto)
+    .input("AplicarDesconto", sql.Bit, 0)
     .input("ObservacaoCupom", sql.NVarChar(sql.MAX), observacaoCupom)
     .input("IDOrigemPedido", sql.Int, idOrigemPedido)
     .input("PermitirAlterar", sql.Bit, 0)
@@ -334,16 +337,14 @@ const carregarTipoPagamento = async (pagamento) => {
   return config.tipoPagamento.outros;
 };
 
-const adicionarPedidoPagamento = async (idPedido, tipoPagamento, pagamento) => {
+const adicionarPedidoPagamento = async ({
+  idPedido,
+  tipoPagamento,
+  valorDoPagamento,
+}) => {
   const pool = await getPool();
   const idGateway =
     tipoPagamento.IDGateway === 0 ? null : tipoPagamento.IDGateway;
-
-  let valorDoPagamento = pagamento.value;
-
-  if (pagamento.method === "CASH") {
-    valorDoPagamento = pagamento.changeFor ?? pagamento.value;
-  }
 
   await pool
     .request()
@@ -362,29 +363,27 @@ const adicionarPedidoPagamento = async (idPedido, tipoPagamento, pagamento) => {
 
   return {
     name: tipoPagamento?.Nome,
-    value: parseFloat(pagamento.value),
+    value: parseFloat(valorDoPagamento),
   };
 };
 
 const adicionarPagamentos = async (pedido, idPedido) => {
   const pagamentos = [];
+  const valorTotal = calcularValorTotalDoPedido(pedido);
 
-  for (const pagamento of pedido.payments.methods) {
-    const tipoPagamento = await carregarTipoPagamento(pagamento);
-    const pagamentoInfo = await adicionarPedidoPagamento(
-      idPedido,
-      tipoPagamento,
-      pagamento,
-    );
+  const tipoPagamento = await carregarTipoPagamento(pedido.payments.methods[0]);
+  const pagamentoInfo = await adicionarPedidoPagamento({
+    idPedido,
+    tipoPagamento,
+    valorDoPagamento: valorTotal,
+  });
 
-    pagamentos.push(pagamentoInfo);
-  }
-
+  pagamentos.push(pagamentoInfo);
   return pagamentos;
 };
 
 const formatarTicket = (pedido, cliente, pagamentos) => {
-  let ticket = ` *** Keeta #${pedido.displayId} ***\r\n`;
+  let ticket = ` *** Pedido Keeta ${pedido.displayId} ***\r\n`;
   ticket += `Data do Pedido: ${new Date(pedido.createdAt).toLocaleString()}\r\n`;
   ticket += `Cliente: ${cliente.name}\r\n`;
   ticket += `Telefone: (${cliente.phone.extension}) ${cliente.phone.number}\r\n`;
@@ -406,18 +405,13 @@ const formatarTicket = (pedido, cliente, pagamentos) => {
     });
   });
 
-  ticket += `\r\nDescontos:\r\n`;
-  pedido.discounts.forEach((discount) => {
-    ticket += `  - ${discount.target}: R$ ${discount.amount.value.toFixed(2)}\r\n`;
-  });
-  ticket += `\r\nTaxa de Entrega: R$ ${pedido.total.otherFees.value}\r\n`;
-  ticket += `\r\nPagamentos:\r\n`;
-  pagamentos.forEach((pagamento) => {
-    const valor = parseFloat(pagamento.value);
-    ticket += `  - ${pagamento.name}: R$ ${valor.toFixed(2)}\r\n`;
-  });
+  const tipoPagamento = pedido.payments.methods[0].method;
+  const valorTotal = calcularValorTotalDoPedido(pedido);
 
-  ticket += `\r\nTotal: R$ ${pedido.total.orderAmount.value.toFixed(2)}\r\n`;
+  ticket += `\r\nTaxa de Entrega: R$ ${pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0}\r\n`;
+  ticket += `\r\nPagamentos:\r\n`;
+  ticket += `  - ${tipoPagamento} R$ ${valorTotal.toFixed(2)}\r\n`;
+  ticket += `\r\nTotal: R$ ${valorTotal.toFixed(2)}\r\n`;
 
   return ticket;
 };
