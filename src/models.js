@@ -574,7 +574,7 @@ const sincronisarStatus = async ({ pedido }) => {
         detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
       ) {
         console.log("Finalizando pedido keeta");
-        await keetaApi.post(`/orders/${keetaApi.Valor}/delivered`);
+        await keetaApi.post(`/orders/${keetaTagId.Valor}/delivered`);
         await atualizarValorTag({
           GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
