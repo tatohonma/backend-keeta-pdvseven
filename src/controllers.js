@@ -92,6 +92,7 @@ const processarPedidosExportacao = async () => {
       return;
     }
 
+    console.log(`🔄 [Sincronizando pedidos]`);
     for (const pedido of pedidos.recordset) {
       sincronisarStatus({ pedido });
       // await new Promise((res, rej) => setTimeout(res, 5000));

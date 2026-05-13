@@ -20,6 +20,14 @@ const {
 } = require("./services/cliente");
 const { buscarIdEstado } = require("./services/estado");
 const { toCurrency } = require("./utils/currency");
+const {
+  buscarDetalhesDoPedido,
+  confirmarPedido,
+  despacharPedido,
+  finalizarPedido,
+  cancelarPedido,
+} = require("./api/pedido");
+const { STATUS_PDV_MAP, PDV_KEETA_MAP } = require("./constants");
 
 let config = {};
 
@@ -411,205 +419,194 @@ const formatarTicket = (pedido, cliente, pagamentos) => {
 };
 
 const sincronisarStatus = async ({ pedido }) => {
-  console.log("Sincronizando pedidos");
   try {
-    const statusPdvInverted = {
-      10: "aberto",
-      20: "enviado",
-      40: "finalizado",
-      50: "cancelado",
-      60: "nao-confirmado",
-    };
+    const GUID = pedido.GUIDIdentificacao;
+    const idPedidoPDV = pedido.IDPedido;
 
-    const statusPdvKeetaMap = {
-      10: ["CONFIRMED"], // Aberto - Em produção
-      20: ["DISPATCHED", "READY_FOR_PICKUP"], // Enviado - Pronto
-      40: ["PICKED_UP", "DELIVERED", "CONCLUDED"], // Finalizado - Finalizado (Pedido concluído)
-      50: [
-        "CANCELLATION_REQUESTED",
-        "CANCELLED",
-        "USER_REFUND_REQUEST",
-        "REFUNDED",
-        "REFUND_FAILED",
-      ], // Cancelado - Negado/Cancelado
-      60: ["CREATED"], // Não confirmado - Em análise
-    };
-
-    const keetaTagId = await procurarTagGUIDChave({
+    const { Valor: idPedidoKeeta } = await procurarTagGUIDChave({
       chave: "keeta-orderId",
-      GUID: pedido.GUIDIdentificacao,
+      GUID,
     });
 
-    const detalhesDoPedidoKeeta = await keetaApi.get(
-      `/orders/${keetaTagId.Valor}`,
-    );
+    const detalhesPedidoKeeta = await buscarDetalhesDoPedido({
+      id: idPedidoKeeta,
+    });
 
-    const valorStatusPedidoKeeta = detalhesDoPedidoKeeta.data.lastEvent;
-    const statusPedidoPDV7 = statusPdvInverted[pedido.IDStatusPedido];
+    const statusPedidoKeeta = detalhesPedidoKeeta.lastEvent;
+    const metodoEntrega = detalhesPedidoKeeta.delivery.deliveredBy;
+    const statusPedidoPDV = pedido.IDStatusPedido;
 
-    // verifica se o status do keeta esta diferente do pdv7
-    if (
-      !statusPdvKeetaMap[pedido.IDStatusPedido].includes(valorStatusPedidoKeeta)
-    ) {
+    const statusPedidoIgual =
+      PDV_KEETA_MAP[statusPedidoPDV].includes(statusPedidoKeeta);
+
+    if (!statusPedidoIgual) {
+      console.log(`--- Status do pedido ${idPedidoPDV} sendo sincronizado!`);
       console.log(
-        `Sincronizando status pedido ${pedido.IDPedido}, Status keeta: ${valorStatusPedidoKeeta}, Status pdv: ${statusPedidoPDV7}`,
+        `    [KEETA]: ${statusPedidoKeeta}, [PDV]: ${STATUS_PDV_MAP[statusPedidoPDV]}`,
       );
 
-      const pedidoKeetaNegadoOuCancelado = statusPdvKeetaMap[50].includes(
-        valorStatusPedidoKeeta,
-      );
+      const pedidoCanceladoKeeta =
+        PDV_KEETA_MAP[50].includes(statusPedidoKeeta);
 
-      // Caso pedido esteja cancelado ou negado no keeta - cancela no PDV
-      if (pedidoKeetaNegadoOuCancelado) {
-        console.log(
-          `Status pvd7 sendo alterado para cancelado, pedido: ${pedido.IDPedido}`,
-        );
-
+      if (pedidoCanceladoKeeta) {
         await atualizarValorTag({
           chave: "keeta-status",
-          GUID: pedido.GUIDIdentificacao,
-          valor: valorStatusPedidoKeeta,
+          valor: statusPedidoKeeta,
+          GUID,
         });
 
         await atualizarStatusPedido({
-          GUID: pedido.GUIDIdentificacao,
-          IDStatusPedido: 50, // "cancelado"
+          IDStatusPedido: 50,
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'cancelado' PDV`);
         return;
       }
 
-      // if (
-      //   valorStatusPedidoKeeta === "CONFIRMED" &&
-      //   statusPedidoPDV7 === "nao-confirmado"
-      // ) {
-      //   console.log(
-      //     "Status anotaai no pdvseven sendo alterado para 'em-producao'",
-      //   );
-      //   await atualizarValorTag({
-      //     chave: "anotaai-status",
-      //     GUID: pedido.GUIDIdentificacao,
-      //     valor: valorStatusPedidoKeeta,
-      //   });
+      const pedidoConfirmadoKeeta = statusPedidoKeeta === "CONFIRMED";
+      const pedidoNaoConfimadoPdv =
+        STATUS_PDV_MAP[statusPedidoPDV] === "nao-confirmado";
 
-      //   // await atualizarStatusPedido({ GUID: pedido.GUIDIdentificacao, IDStatusPedido: 60 });  // 10 corresponde a "nao conf"
-      //   return;
-      // }
+      if (pedidoConfirmadoKeeta && pedidoNaoConfimadoPdv) {
+        await atualizarValorTag({
+          chave: "keeta-status",
+          valor: statusPedidoKeeta,
+          GUID,
+        });
 
-      //   if (
-      //     statusPedidoAnotaAi === "pronto" &&
-      //     ["nao-confirmado", "aberto"].includes(statusPedidoPDV7)
-      //   ) {
-      //     // console.log("Status pvd7 sendo alterado para enviado");
-      //     // await atualizarValorTag({ chave: "anotaai-status", GUID: pedido.GUIDIdentificacao, valor: valorStatusPedidoAnotaAi.toString() });
-      //     // await atualizarStatusPedido({ GUID: pedido.GUIDIdentificacao, IDStatusPedido: 20 });  // 20 corresponde a "enviado"
-      //     return;
-      //   }
+        await atualizarStatusPedido({
+          IDStatusPedido: 10,
+          GUID,
+        });
 
-      //   if (
-      //     statusPedidoAnotaAi === "finalizado" &&
-      //     ["nao-confirmado", "aberto", "enviado"].includes(statusPedidoPDV7)
-      //   ) {
-      //     // console.log("Status pvd7 sendo alterado para finalizado")
-      //     // await atualizarValorTag({ chave: "anotaai-status", GUID: pedido.GUIDIdentificacao, valor: valorStatusPedidoAnotaAi.toString() });
-      //     // await atualizarStatusPedido({ GUID: pedido.GUIDIdentificacao, IDStatusPedido: 40 });  // 40 corresponde a finalizado
-      //     return;
-      //   }
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'confirmado' PDV`);
+        return;
+      }
 
-      if (statusPedidoPDV7 === "aberto") {
-        console.log("Confirmando pedido no keeta", pedido.IDPedido);
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/confirm`);
+      const pedidoProntoKeeta = PDV_KEETA_MAP[20].includes(statusPedidoKeeta);
+      const pedidoNaoConfimadoOuAbertoPDV = [
+        "nao-confirmado",
+        "aberto",
+      ].includes(STATUS_PDV_MAP[statusPedidoPDV]);
+
+      if (pedidoProntoKeeta && pedidoNaoConfimadoOuAbertoPDV) {
+        await atualizarValorTag({
+          chave: "keeta-status",
+          valor: statusPedidoKeeta,
+          GUID,
+        });
+
+        await atualizarStatusPedido({
+          IDStatusPedido: 20,
+          GUID,
+        });
+
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'enviado' PDV`);
+        return;
+      }
+
+      const pedidoFinalizadoKeeta =
+        PDV_KEETA_MAP[40].includes(statusPedidoKeeta);
+      const pedidoNaoConfimadoAbertoOuEnviadoPDV = [
+        "nao-confirmado",
+        "aberto",
+        "enviado",
+      ].includes(STATUS_PDV_MAP[statusPedidoPDV]);
+
+      if (pedidoFinalizadoKeeta && pedidoNaoConfimadoAbertoOuEnviadoPDV) {
+        await atualizarValorTag({
+          chave: "keeta-status",
+          valor: statusPedidoKeeta,
+          GUID,
+        });
+
+        await atualizarStatusPedido({
+          IDStatusPedido: 40,
+          GUID,
+        });
+
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'finalizado' PDV`);
+        return;
+      }
+
+      const pedidoAbertoPDV = STATUS_PDV_MAP[statusPedidoPDV] === "aberto";
+      if (pedidoAbertoPDV) {
+        await confirmarPedido({ id: idPedidoKeeta });
 
         await atualizarValorTag({
-          GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
           valor: "CONFIRMED",
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'confirmado' KEETA`);
         return;
       }
 
-      if (
-        statusPedidoPDV7 === "enviado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
-      ) {
-        console.log("Enviando pedido no keeta - MERCHANT");
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/dispatch`, {
-          deliveryTrackingInfo: {
-            event: {
-              type: "DELIVERY_ONGOING",
-              message: "PEDIDO ENVIADO",
-              datetime: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-            },
-          },
-        });
+      const pedidoEndiadoPDV = STATUS_PDV_MAP[statusPedidoPDV] === "enviado";
+      const entregaLocal = metodoEntrega === "MERCHANT";
+      const entregaKeeta = metodoEntrega === "MARKETPLACE";
+
+      if (pedidoEndiadoPDV && entregaLocal) {
+        await despacharPedido({ id: idPedidoKeeta });
 
         await atualizarValorTag({
-          GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
           valor: "DISPATCHED",
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'despachado' KEETA`);
         return;
       }
 
-      if (
-        statusPedidoPDV7 === "enviado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MARKETPLACE"
-      ) {
-        console.log("PEDIDO MARKTPLACE - READY FOR PICKUP");
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/readyForPickup`);
+      if (pedidoEndiadoPDV && entregaKeeta) {
+        await pedidoProntoKeeta({ id: idPedidoKeeta });
 
         await atualizarValorTag({
-          GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
           valor: "READY_FOR_PICKUP",
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'pronto para entrega' KEETA`);
         return;
       }
 
-      if (
-        statusPedidoPDV7 === "finalizado" &&
-        detalhesDoPedidoKeeta.data.delivery.deliveredBy === "MERCHANT"
-      ) {
-        console.log("Finalizando pedido keeta");
-        await keetaApi.post(`/orders/${keetaTagId.Valor}/delivered`);
+      const pedidoFinalizadoPDV =
+        STATUS_PDV_MAP[statusPedidoPDV] === "finalizado";
+
+      if (pedidoFinalizadoPDV && entregaLocal) {
+        await finalizarPedido({ id: idPedidoKeeta });
+
         await atualizarValorTag({
-          GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
           valor: "DELIVERED",
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'entregue' KEETA`);
         return;
       }
 
-      if (statusPedidoPDV7 === "cancelado") {
-        console.log("Cancelando pedido keeta", pedido.IDPedido);
-        const motivo = await obterMotivoCancelamento({
+      const pedidoCanceladoPDV =
+        STATUS_PDV_MAP[statusPedidoPDV] === "cancelado";
+
+      if (pedidoCanceladoPDV) {
+        const { Nome: motivoCancelamento } = await obterMotivoCancelamento({
           IDPedido: pedido.IDPedido,
         });
 
-        const response = await keetaApi.post(
-          `/orders/${keetaTagId.Valor}/requestCancellation`,
-          {
-            reason: motivo?.Nome ?? "Motivo não informado",
-            code: "SYSTEMIC_ISSUES",
-            mode: "AUTO",
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        );
+        await cancelarPedido({ id: idPedidoKeeta, motivo: motivoCancelamento });
 
         await atualizarValorTag({
-          GUID: pedido.GUIDIdentificacao,
           chave: "keeta-status",
           valor: "CANCELLED",
+          GUID,
         });
 
+        console.log(`    [PEDIDO: ${idPedidoPDV}] 'cancelado' KEETA`);
         return;
       }
     }
