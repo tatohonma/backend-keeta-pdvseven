@@ -175,7 +175,7 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idEntregador = config.entregador.IDEntregador;
 
   const descontos = pedido.otherFees.filter(
-    (f) => !["DELIVERY_FEE", "TIP"].includes(f.name),
+    (f) => !["DELIVERY_FEE"].includes(f.name),
   );
 
   const valorTotal = calcularValorTotalDoPedido(pedido);
@@ -183,12 +183,7 @@ const adicionarPedido = async (pedido, idCliente) => {
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-  // const valorTotalDosDescontos = descontos.reduce((acc, curr) => {
-  //   return acc + curr.price.value;
-  // }, 0);
-
   const observacoes = "";
-  // const aplicarDesconto = valorTotalDosDescontos > 0 ? 1 : 0;
 
   const observacaoCupom =
     `*** Pedido Keeta ${pedido.displayId} ***\n` +
