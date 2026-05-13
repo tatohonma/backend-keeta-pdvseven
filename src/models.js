@@ -174,10 +174,6 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
-  const descontos = pedido.otherFees.filter(
-    (f) => !["DELIVERY_FEE"].includes(f.name),
-  );
-
   const valorTotal = calcularValorTotalDoPedido(pedido);
 
   const valorDaEntrega =
@@ -187,7 +183,10 @@ const adicionarPedido = async (pedido, idCliente) => {
 
   const observacaoCupom =
     `*** Pedido Keeta ${pedido.displayId} ***\n` +
-    descontos.map((e) => `${e.name} ${toCurrency(e.price.value)}`).join("\n");
+    pedido.otherFees
+      .filter((f) => !["DELIVERY_FEE"].includes(f.name))
+      .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
+      .join("\n");
 
   const taxaServicoPadrao = 0;
   const guid = uuidv4();
