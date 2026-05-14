@@ -26,6 +26,7 @@ const {
   despacharPedido,
   finalizarPedido,
   cancelarPedido,
+  pedidoProntoParaEntrega,
 } = require("./api/pedido");
 const { STATUS_PDV_MAP, PDV_KEETA_MAP } = require("./constants");
 
@@ -217,11 +218,11 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
-    .input("ValorDesconto", sql.Decimal(18, 2), valorDescontos)
+    .input("ValorDesconto", sql.Decimal(18, 2), null)
     .input("ValorTotal", sql.Decimal(18, 2), valorTotal)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
     .input("ValorEntrega", sql.Decimal(18, 2), valorDaEntrega)
-    .input("AplicarDesconto", sql.Bit, valorDescontos > 0 ? 1 : 0)
+    .input("AplicarDesconto", sql.Bit, 0)
     .input("ObservacaoCupom", sql.NVarChar(sql.MAX), observacaoCupom)
     .input("IDOrigemPedido", sql.Int, idOrigemPedido)
     .input("PermitirAlterar", sql.Bit, 0)
@@ -593,7 +594,7 @@ const sincronisarStatus = async ({ pedido }) => {
       }
 
       if (pedidoEndiadoPDV && entregaKeeta) {
-        await pedidoProntoKeeta({ id: idPedidoKeeta });
+        await pedidoProntoParaEntrega({ id: idPedidoKeeta });
 
         await atualizarValorTag({
           chave: "keeta-status",
