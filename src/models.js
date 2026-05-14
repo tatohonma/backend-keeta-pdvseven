@@ -167,13 +167,6 @@ const adicionarCliente = async ({ pedido }) => {
   return clienteExistente.IDCliente;
 };
 
-const calcularValorTotalDoPedido = (pedido) => {
-  const valorDaEntrega =
-    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
-
-  return pedido.total.itemsPrice.value + valorDaEntrega;
-};
-
 const adicionarPedido = async (pedido, idCliente) => {
   const pool = await getPool();
 
@@ -182,19 +175,35 @@ const adicionarPedido = async (pedido, idCliente) => {
   const idOrigemPedido = config.origemPedido.IDOrigemPedido;
   const idEntregador = config.entregador.IDEntregador;
 
-  const valorTotal = calcularValorTotalDoPedido(pedido);
-
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
+  const valorDescontos = pedido.discounts.reduce(
+    (acc, cur) => acc + cur.amount.value,
+    0,
+  );
+
+  const valorTotal =
+    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
+
   const observacoes = "";
+
+  const observacaoOtherFees = pedido.otherFees
+    .filter((f) => !["DELIVERY_FEE"].includes(f.name))
+    .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
+    .join("\n");
+
+  const observacaoDesconto = pedido.discounts
+    .flatMap((d) =>
+      d.sponsorshipValues.map((s) => `${s.name} ${toCurrency(s.amount.value)}`),
+    )
+    .join("\n");
 
   const observacaoCupom =
     `*** Pedido Keeta ${pedido.displayId} ***\n` +
-    pedido.otherFees
-      .filter((f) => !["DELIVERY_FEE"].includes(f.name))
-      .map((e) => `${e.name} ${toCurrency(e.price.value)}`)
-      .join("\n");
+    observacaoOtherFees +
+    "\n" +
+    observacaoDesconto;
 
   const taxaServicoPadrao = 0;
   const guid = uuidv4();
@@ -208,11 +217,11 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
-    .input("ValorDesconto", sql.Decimal(18, 2), 0)
+    .input("ValorDesconto", sql.Decimal(18, 2), valorDescontos)
     .input("ValorTotal", sql.Decimal(18, 2), valorTotal)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
     .input("ValorEntrega", sql.Decimal(18, 2), valorDaEntrega)
-    .input("AplicarDesconto", sql.Bit, 0)
+    .input("AplicarDesconto", sql.Bit, valorDescontos > 0 ? 1 : 0)
     .input("ObservacaoCupom", sql.NVarChar(sql.MAX), observacaoCupom)
     .input("IDOrigemPedido", sql.Int, idOrigemPedido)
     .input("PermitirAlterar", sql.Bit, 0)
@@ -371,7 +380,17 @@ const adicionarPedidoPagamento = async ({
 
 const adicionarPagamentos = async (pedido, idPedido) => {
   const pagamentos = [];
-  const valorTotal = calcularValorTotalDoPedido(pedido);
+
+  const valorDaEntrega =
+    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
+
+  const valorDescontos = pedido.discounts.reduce(
+    (acc, cur) => acc + cur.amount.value,
+    0,
+  );
+
+  const valorTotal =
+    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
 
   const tipoPagamento = await carregarTipoPagamento(pedido.payments.methods[0]);
   const pagamentoInfo = await adicionarPedidoPagamento({
@@ -408,9 +427,21 @@ const formatarTicket = (pedido, cliente, pagamentos) => {
   });
 
   const tipoPagamento = pedido.payments.methods[0].method;
-  const valorTotal = calcularValorTotalDoPedido(pedido);
 
-  ticket += `\r\nTaxa de Entrega: R$ ${pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0}\r\n`;
+  const valorDaEntrega =
+    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
+
+  const valorDescontos = pedido.discounts.reduce(
+    (acc, cur) => acc + cur.amount.value,
+    0,
+  );
+
+  const valorTotal =
+    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
+
+  ticket += `\r\nTaxa de Entrega: R$ ${valorDaEntrega}\r\n`;
+  ticket += `\r\nDesconsto: R$ ${valorDescontos}\r\n`;
+
   ticket += `\r\nPagamentos:\r\n`;
   ticket += `  - ${tipoPagamento} R$ ${valorTotal.toFixed(2)}\r\n`;
   ticket += `\r\nTotal: R$ ${valorTotal.toFixed(2)}\r\n`;
