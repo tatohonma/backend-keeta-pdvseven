@@ -202,6 +202,7 @@ const adicionarPedido = async (pedido, idCliente) => {
 
   const observacaoCupom =
     `*** Pedido Keeta ${pedido.displayId} ***\n` +
+    `Código de resgate: ${pedido.delivery.pickupCode}\n` +
     observacaoOtherFees +
     "\n" +
     observacaoDesconto;
@@ -283,8 +284,8 @@ const adicionarProdutos = async (pedido, idPedido) => {
 const carregarProduto = async (item) => {
   let produto = {};
 
-  if (item.externalId) {
-    produto.idProduto = item.externalId;
+  if (item.externalCode) {
+    produto.idProduto = item.externalCode;
     produto.observacao = item.specialInstructions;
   } else {
     produto.idProduto = 1;

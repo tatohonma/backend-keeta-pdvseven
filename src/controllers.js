@@ -28,7 +28,6 @@ const processarPedidosImportacao = async () => {
       });
 
       if (!tag && pedidokeeta.eventType !== "CANCELLED") {
-        console.log("adicionando pedido", pedidokeeta);
         const response = await keetaApi.get(`/orders/${pedidokeeta.orderId}`);
 
         const pedido = response.data;
@@ -66,7 +65,7 @@ const processarPedidosImportacao = async () => {
             decrypted.formattedAddress;
         }
 
-        inserirPedidoNoPDVSeven(pedido);
+        await inserirPedidoNoPDVSeven(pedido);
       }
     }
   } catch (error) {
