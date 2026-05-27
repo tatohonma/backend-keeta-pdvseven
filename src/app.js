@@ -3,11 +3,10 @@ const express = require("express");
 const { verificarConexao } = require("./config/db");
 const { iniciarConfiguracoes } = require("./config/pdv7");
 
-const morgan = require("morgan");
-
 const app = express();
 app.use(express.json());
 
+// const morgan = require("morgan");
 // if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
 
 app.use("/api", require("./routes"));
@@ -16,6 +15,7 @@ const PORT = process.env.PORT || 5102;
 app.listen(PORT, async () => {
   try {
     console.log("Iniciando serviço...");
+    console.log("Environment:", process.env.NODE_ENV);
 
     await verificarConexao();
     await iniciarConfiguracoes();

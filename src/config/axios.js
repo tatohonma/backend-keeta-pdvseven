@@ -12,7 +12,8 @@ const keetaApi = axios.create({
 const refreshToken = async () => {
   const tokenUrl = "https://open.mykeeta.com/api/open/opendelivery/oauth/token";
   const response = await axios.post(tokenUrl, {
-    grant_type: "client_credentials",
+    grant_type:
+      process.env.NODE_ENV !== "dev" ? "app_level_token" : "client_credentials",
     client_id: process.env.KEETA_CLIENT_ID,
     client_secret,
   });
