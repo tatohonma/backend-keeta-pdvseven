@@ -179,13 +179,16 @@ const adicionarPedido = async (pedido, idCliente) => {
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-  const valorDescontos = pedido.discounts.reduce(
-    (acc, cur) => acc + cur.amount.value,
-    0,
-  );
+  // const taxaDeServico =
+  //   pedido.otherFees.find((f) => f.name === "SERVICE_FEE")?.price?.value ?? 0;
 
-  const valorTotal =
-    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
+  // const valorDescontos = pedido.discounts.reduce(
+  //   (acc, cur) => acc + cur.amount.value,
+  //   0,
+  // );
+
+  const valorTotal = pedido.total.orderAmount.value;
+  console.log("Valor total do pedido 1:", valorTotal);
 
   const observacoes = "";
 
@@ -383,16 +386,17 @@ const adicionarPedidoPagamento = async ({
 const adicionarPagamentos = async (pedido, idPedido) => {
   const pagamentos = [];
 
-  const valorDaEntrega =
-    pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
+  // const valorDaEntrega =
+  //   pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-  const valorDescontos = pedido.discounts.reduce(
-    (acc, cur) => acc + cur.amount.value,
-    0,
-  );
+  // const valorDescontos = pedido.discounts.reduce(
+  //   (acc, cur) => acc + cur.amount.value,
+  //   0,
+  // );
 
-  const valorTotal =
-    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
+  const valorTotal = pedido.total.orderAmount.value;
+
+  console.log("Valor total do pedido:", valorTotal);
 
   const tipoPagamento = await carregarTipoPagamento(pedido.payments.methods[0]);
   const pagamentoInfo = await adicionarPedidoPagamento({
@@ -433,13 +437,13 @@ const formatarTicket = (pedido, cliente, pagamentos) => {
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-  const valorDescontos = pedido.discounts.reduce(
-    (acc, cur) => acc + cur.amount.value,
-    0,
-  );
+  // const valorDescontos = pedido.discounts.reduce(
+  //   (acc, cur) => acc + cur.amount.value,
+  //   0,
+  // );
 
-  const valorTotal =
-    pedido.total.itemsPrice.value + valorDaEntrega - valorDescontos;
+  const valorDescontos = pedido.total.discount.value;
+  const valorTotal = pedido.total.orderAmount.value;
 
   ticket += `\r\nTaxa de Entrega: R$ ${valorDaEntrega}\r\n`;
   ticket += `\r\nDesconsto: R$ ${valorDescontos}\r\n`;
