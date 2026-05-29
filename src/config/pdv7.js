@@ -202,6 +202,51 @@ const iniciarConfiguracoes = async () => {
     configuracoes.tipoPagamento.outros = outrosPagamentosResult.recordset[0];
     console.log("  - TipoPagamento Outros carregada");
 
+    const produtoResult = await pool.request().query(`
+    SELECT *
+    FROM tbProduto
+    WHERE Nome = 'Taxa de Serviço Keeta'
+  `);
+
+    if (produtoResult.recordset.length === 0) {
+      await pool.request().query(`
+      INSERT INTO tbProduto (
+        IDTipoProduto,
+        Nome,
+        ValorUnitario,
+        Ativo,
+        Disponibilidade,
+        DtAlteracaoDisponibilidade,
+        DtUltimaAlteracao,
+        Excluido,
+        IDClassificacaoFiscal,
+        IDUnidade,
+        ControlarEstoque,
+        UtilizarBalanca,
+        AssistenteModificacoes,
+        GUIDIdentificacao
+      )
+      VALUES (
+        10,
+        'Taxa de Serviço Keeta',
+        0,
+        1,
+        1,
+        GETDATE(),
+        GETDATE(),
+        0,
+        2,
+        1,
+        0,
+        0,
+        0,
+        NEWID()
+      )
+    `);
+
+      console.log("  - Produto 'Taxa de Serviço Keeta' criado.");
+    }
+
     console.log("Configurações carregadas com sucesso");
   } catch (error) {
     console.error("Erro ao configurar o sistema", error);

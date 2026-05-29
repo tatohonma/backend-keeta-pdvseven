@@ -179,16 +179,9 @@ const adicionarPedido = async (pedido, idCliente) => {
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
 
-  // const taxaDeServico =
-  //   pedido.otherFees.find((f) => f.name === "SERVICE_FEE")?.price?.value ?? 0;
-
-  // const valorDescontos = pedido.discounts.reduce(
-  //   (acc, cur) => acc + cur.amount.value,
-  //   0,
-  // );
-
   const valorTotal = pedido.total.orderAmount.value;
-  console.log("Valor total do pedido 1:", valorTotal);
+  const desconto = pedido.total.discount.value;
+  const aplicarDesconto = desconto > 0 ? 1 : 0;
 
   const observacoes = "";
 
@@ -203,12 +196,7 @@ const adicionarPedido = async (pedido, idCliente) => {
     )
     .join("\n");
 
-  const observacaoCupom =
-    `*** Pedido Keeta ${pedido.displayId} ***\n` +
-    `Código de resgate: ${pedido.delivery.pickupCode}\n` +
-    observacaoOtherFees +
-    "\n" +
-    observacaoDesconto;
+  const observacaoCupom = `*** Pedido Keeta ${pedido.displayId} ***\n ${observacaoOtherFees}\n ${observacaoDesconto}`;
 
   const taxaServicoPadrao = 0;
   const guid = uuidv4();
@@ -222,11 +210,11 @@ const adicionarPedido = async (pedido, idCliente) => {
     .input("IDTaxaEntrega", sql.Int, idTaxaEntrega)
     .input("GUIDIdentificacao", sql.NVarChar(50), guid)
     .input("GUIDMovimentacao", sql.NVarChar(50), uuidv4())
-    .input("ValorDesconto", sql.Decimal(18, 2), null)
+    .input("ValorDesconto", sql.Decimal(18, 2), desconto)
     .input("ValorTotal", sql.Decimal(18, 2), valorTotal)
     .input("Observacoes", sql.NVarChar(sql.MAX), observacoes)
     .input("ValorEntrega", sql.Decimal(18, 2), valorDaEntrega)
-    .input("AplicarDesconto", sql.Bit, 0)
+    .input("AplicarDesconto", sql.Bit, aplicarDesconto)
     .input("ObservacaoCupom", sql.NVarChar(sql.MAX), observacaoCupom)
     .input("IDOrigemPedido", sql.Int, idOrigemPedido)
     .input("PermitirAlterar", sql.Bit, 0)
@@ -282,12 +270,32 @@ const adicionarProdutos = async (pedido, idPedido) => {
       }
     }
   }
+
+  const taxaDeServico = pedido.otherFees.find((f) => f.name === "SERVICE_FEE");
+
+  if (taxaDeServico) {
+    const pool = await getPool();
+
+    const produtoResult = await pool.request().query(`
+    SELECT *
+    FROM tbProduto
+    WHERE Nome = 'Taxa de Serviço Keeta'
+  `);
+
+    // const observacao = `Taxa de serviço do pedido ${pedido.displayId}`;
+    const observacao = "";
+    const idProduto = produtoResult.recordset[0].IDProduto;
+
+    await adicionarPedidoProduto(idPedido, { idProduto, observacao }, null, {
+      unitPrice: { value: taxaDeServico.price.value },
+    });
+  }
 };
 
 const carregarProduto = async (item) => {
   let produto = {};
 
-  if (item.externalCode) {
+  if (item.externalCode && !isNaN(Number(item.externalCode))) {
     produto.idProduto = item.externalCode;
     produto.observacao = item.specialInstructions;
   } else {
@@ -385,18 +393,7 @@ const adicionarPedidoPagamento = async ({
 
 const adicionarPagamentos = async (pedido, idPedido) => {
   const pagamentos = [];
-
-  // const valorDaEntrega =
-  //   pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
-
-  // const valorDescontos = pedido.discounts.reduce(
-  //   (acc, cur) => acc + cur.amount.value,
-  //   0,
-  // );
-
   const valorTotal = pedido.total.orderAmount.value;
-
-  console.log("Valor total do pedido:", valorTotal);
 
   const tipoPagamento = await carregarTipoPagamento(pedido.payments.methods[0]);
   const pagamentoInfo = await adicionarPedidoPagamento({
@@ -436,16 +433,14 @@ const formatarTicket = (pedido, cliente, pagamentos) => {
 
   const valorDaEntrega =
     pedido.otherFees.find((f) => f.name === "DELIVERY_FEE")?.price?.value ?? 0;
-
-  // const valorDescontos = pedido.discounts.reduce(
-  //   (acc, cur) => acc + cur.amount.value,
-  //   0,
-  // );
+  const taxaDeServico =
+    pedido.otherFees.find((f) => f.name === "SERVICE_FEE")?.price?.value ?? 0;
 
   const valorDescontos = pedido.total.discount.value;
   const valorTotal = pedido.total.orderAmount.value;
 
   ticket += `\r\nTaxa de Entrega: R$ ${valorDaEntrega}\r\n`;
+  ticket += `\r\nTaxa de Serviço: R$ ${taxaDeServico}\r\n`;
   ticket += `\r\nDesconsto: R$ ${valorDescontos}\r\n`;
 
   ticket += `\r\nPagamentos:\r\n`;
