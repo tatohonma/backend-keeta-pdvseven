@@ -554,6 +554,7 @@ const sincronisarStatus = async ({ pedido }) => {
         });
 
         await atualizarStatusPedido({
+          dtPedidoFechamento: new Date(),
           IDStatusPedido: 40,
           GUID,
         });
