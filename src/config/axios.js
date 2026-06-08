@@ -36,6 +36,7 @@ keetaApi.interceptors.request.use(async (config) => {
 
   config.headers.Authorization = `Bearer ${token}`;
   config.headers["X-App-Signature"] = signature;
+  config.headers["x-polling-merchants"] = process.env.KEETA_MERCHANT_ID;
 
   return config;
 });
