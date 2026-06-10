@@ -29,6 +29,7 @@ const {
   pedidoProntoParaEntrega,
 } = require("./api/pedido");
 const { STATUS_PDV_MAP, PDV_KEETA_MAP } = require("./constants");
+const { procurarCaixaAberto } = require("./services/caixa");
 
 let config = {};
 
@@ -553,10 +554,15 @@ const sincronisarStatus = async ({ pedido }) => {
           GUID,
         });
 
+        const idCaixaAberto = await procurarCaixaAberto({
+          idPDV: process.env.CAIXA_PDV,
+        });
+
         await atualizarStatusPedido({
           dtPedidoFechamento: new Date(),
           IDStatusPedido: 40,
           GUID,
+          idCaixa: idCaixaAberto.IDCaixa,
         });
 
         console.log(`    [PEDIDO: ${idPedidoPDV}] 'finalizado' PDV`);

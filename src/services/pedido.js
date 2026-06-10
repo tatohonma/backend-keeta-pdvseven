@@ -5,6 +5,7 @@ exports.atualizarStatusPedido = async ({
   GUID,
   IDStatusPedido,
   dtPedidoFechamento = null,
+  idCaixa = null,
 }) => {
   const pool = await getPool();
 
@@ -12,10 +13,12 @@ exports.atualizarStatusPedido = async ({
     .request()
     .input("GUIDIdentificacao", sql.NVarChar(50), GUID)
     .input("IDStatusPedido", sql.Int, IDStatusPedido)
-    .input("DtPedidoFechamento", sql.DateTime, dtPedidoFechamento).query(`
+    .input("DtPedidoFechamento", sql.DateTime, dtPedidoFechamento)
+    .input("IDCaixa", sql.Int, idCaixa).query(`
         UPDATE [dbo].[tbPedido]
         SET IDStatusPedido = @IDStatusPedido,
-        DtPedidoFechamento = @DtPedidoFechamento
+        DtPedidoFechamento = @DtPedidoFechamento,
+        IDCaixa = @IDCaixa
         WHERE GUIDIdentificacao = @GUIDIdentificacao;
       `);
 
