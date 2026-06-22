@@ -288,7 +288,7 @@ const adicionarProdutos = async (pedido, idPedido) => {
     const idProduto = produtoResult.recordset[0].IDProduto;
 
     await adicionarPedidoProduto(idPedido, { idProduto, observacao }, null, {
-      unitPrice: { value: taxaDeServico.price.value },
+      originalPrice: { value: taxaDeServico.price.value },
     });
   }
 };
@@ -338,7 +338,7 @@ const adicionarPedidoProduto = async (
     .input("IDPDV", sql.Int, idPDV)
     .input("IDUsuario", sql.Int, idUsuario)
     .input("Quantidade", sql.Decimal(18, 3), 1)
-    .input("ValorUnitario", sql.Decimal(18, 2), item.unitPrice.value)
+    .input("ValorUnitario", sql.Decimal(18, 2), item.originalPrice.value)
     .input("Notas", sql.NVarChar(sql.MAX), notas)
     .input("Cancelado", sql.Bit, 0)
     .input("RetornarAoEstoque", sql.Bit, 0).query(`
