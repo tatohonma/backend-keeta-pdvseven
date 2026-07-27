@@ -273,6 +273,7 @@ const adicionarProdutos = async (pedido, idPedido) => {
   }
 
   const taxaDeServico = pedido.otherFees.find((f) => f.name === "SERVICE_FEE");
+  const serviceFee = pedido.otherFees.find((f) => f.name === "SERVICE_FEE");
 
   if (taxaDeServico) {
     const pool = await getPool();
@@ -288,7 +289,10 @@ const adicionarProdutos = async (pedido, idPedido) => {
     const idProduto = produtoResult.recordset[0].IDProduto;
 
     await adicionarPedidoProduto(idPedido, { idProduto, observacao }, null, {
-      originalPrice: { value: taxaDeServico.price.value },
+      originalPrice: {
+        value:
+          taxaDeServico.price.value + (serviceFee ? serviceFee.price.value : 0),
+      },
     });
   }
 };
