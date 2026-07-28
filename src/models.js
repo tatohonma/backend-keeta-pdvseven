@@ -75,7 +75,7 @@ const adicionarCliente = async ({ pedido }) => {
   const ddd = ext && !isNaN(ext) ? Number(ext) : 0;
 
   const num = pedido.customer.phone.number;
-  const telefone = !isNaN(num) && String(num).length <= 9 ? num : 0;
+  const telefone = !isNaN(num) ? num : 0;
 
   let bairro,
     cep,
@@ -105,7 +105,6 @@ const adicionarCliente = async ({ pedido }) => {
   } else {
     const endereco = pedido.delivery.deliveryAddress;
 
-    enderecoDeReferenia = endereco.formattedAddress;
     bairro = endereco.district;
     cep = endereco.postalCode ? endereco.postalCode.replace(/\D/g, "") : "0";
     cidade = endereco.city;
@@ -273,7 +272,7 @@ const adicionarProdutos = async (pedido, idPedido) => {
   }
 
   const taxaDeServico = pedido.otherFees.find((f) => f.name === "SERVICE_FEE");
-  const serviceFee = pedido.otherFees.find((f) => f.name === "SERVICE_FEE");
+  const minOrderFee = pedido.otherFees.find((f) => f.name === "MIN_ORDER_FEE");
 
   if (taxaDeServico) {
     const pool = await getPool();
@@ -291,7 +290,8 @@ const adicionarProdutos = async (pedido, idPedido) => {
     await adicionarPedidoProduto(idPedido, { idProduto, observacao }, null, {
       originalPrice: {
         value:
-          taxaDeServico.price.value + (serviceFee ? serviceFee.price.value : 0),
+          taxaDeServico.price.value +
+          (minOrderFee ? minOrderFee.price.value : 0),
       },
     });
   }
