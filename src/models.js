@@ -112,8 +112,8 @@ const adicionarCliente = async ({ pedido }) => {
     cep = endereco.postalCode ? endereco.postalCode.replace(/\D/g, "") : "0";
     cidade = endereco.city;
     complemento = endereco.complement;
-    rua = endereco.street;
-    numero = endereco.number;
+    nomeRua = endereco.street;
+    numeroRua = endereco.number;
 
     idEstado = await buscarIdEstado({ estado: endereco.state });
   }
