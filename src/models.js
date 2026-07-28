@@ -75,7 +75,9 @@ const adicionarCliente = async ({ pedido }) => {
   const ddd = ext && !isNaN(ext) ? Number(ext) : 0;
 
   const num = pedido.customer.phone.number;
-  const telefone = !isNaN(num) ? num : 0;
+  const telefone = !isNaN(num)
+    ? parseInt(num.toString().substring(num.toString().length - 9), 10)
+    : 0;
 
   let bairro,
     cep,
