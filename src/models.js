@@ -105,6 +105,7 @@ const adicionarCliente = async ({ pedido }) => {
   } else {
     const endereco = pedido.delivery.deliveryAddress;
 
+    enderecoDeReferenia = "";
     bairro = endereco.district;
     cep = endereco.postalCode ? endereco.postalCode.replace(/\D/g, "") : "0";
     cidade = endereco.city;
