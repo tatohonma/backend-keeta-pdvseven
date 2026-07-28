@@ -61,6 +61,7 @@ const processarPedidosImportacao = async () => {
           pedido.delivery.deliveryAddress.district = decrypted.deliveryDistrict;
           pedido.delivery.deliveryAddress.number = decrypted.deliveryNumber;
           pedido.delivery.deliveryAddress.complement = decrypted.complement;
+          pedido.delivery.deliveryAddress.street = decrypted.street;
           pedido.delivery.deliveryAddress.formattedAddress =
             decrypted.formattedAddress;
         }
