@@ -71,8 +71,11 @@ const adicionarCliente = async ({ pedido }) => {
     valor: pedido.customer.id,
   });
 
-  const ext = pedido.customer.phone.extension;
-  const ddd = ext && !isNaN(ext) ? Number(ext) : 0;
+  const ext = String(pedido.customer.phone.number || '').replace(/\D/g, '');
+
+  const ddd = ext.length >= 2
+    ? Number(ext.slice(0, 2))
+    : 0;
 
   const num = pedido.customer.phone.number;
   const telefone = !isNaN(num)
@@ -84,8 +87,8 @@ const adicionarCliente = async ({ pedido }) => {
     cidade,
     complemento,
     enderecoDeReferenia,
-    rua,
-    numero,
+    nomeRua,
+    numeroRua,
     idEstado,
     nomeCompleto,
     documento;
@@ -101,8 +104,8 @@ const adicionarCliente = async ({ pedido }) => {
     cidade = "RETIRADA";
     complemento = "";
     enderecoDeReferenia = "";
-    rua = "RETIRADA NO LOCAL";
-    numero = "S/N";
+    nomeRua = "RETIRADA NO LOCAL";
+    numeroRua = "S/N";
     idEstado = 25; // Fixado conforme solicitado
   } else {
     const endereco = pedido.delivery.deliveryAddress;
@@ -131,8 +134,8 @@ const adicionarCliente = async ({ pedido }) => {
       idEstado,
       nomeCompleto,
       enderecoDeReferenia,
-      rua,
-      numero,
+      nomeRua,
+      numeroRua,
       guid,
       documento,
     });
@@ -157,8 +160,8 @@ const adicionarCliente = async ({ pedido }) => {
     cidade,
     complemento,
     enderecoDeReferenia,
-    rua,
-    numero,
+    nomeRua,
+    numeroRua,
     idCliente: clienteExistente.IDCliente,
     idEstado,
     nomeCompleto,
